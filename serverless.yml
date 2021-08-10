@@ -1,0 +1,36 @@
+service: kubeflow-slackbot
+
+frameworkVersion: '2'
+
+package:
+  exclude:
+    - .git/**
+    - venv/**
+    - vender
+    - node_modules
+    - dist
+
+provider:
+  name: aws
+  runtime: python3.8
+  lambdaHashingVersion: 20201221
+  region: eu-west-2
+  environment:
+    SLACK_BOT_TOKEN: ${file(config.${opt:stage, 'dev'}.json):SLACK_BOT_TOKEN}
+    SLACK_SIGNING_SECRET: ${file(config.${opt:stage, 'dev'}.json):SLACK_SIGNING_SECRET}
+    KUBECONFIG: /tmp/kubeconfig
+    CLUSTER_NAME: my-k8s-cluster
+    REGION: eu-west-2
+    BASE_URL: "https://kfp.mydomain.com/"
+functions:
+  kubeflow-slackbot:
+    handler: handler.handler
+    name: kubeflow-slackbot
+    timeout: 30
+    events:
+      - http:
+          path: slack/events
+          method: post
+
+plugins:
+  - serverless-python-requirements

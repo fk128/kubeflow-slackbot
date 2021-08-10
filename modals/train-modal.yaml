@@ -1,0 +1,21 @@
+name: train
+title: Submit KFP
+slash_command: /kfp-train
+validate_args_func: validate_train_args
+kfp:
+  pipeline_name: [Train - v1, Train - v2] # can have more than one pipline
+  experiment_name: Training
+blocks:
+  - name: dataset-id
+    display_name: Dataset ID
+    type: int
+  - name: model-architecture
+    display_name: architecture
+    value: EfficientNetB1
+    type: str
+    choices: [EfficientNetB0, EfficientNetB1, InceptionV3, ResNet18, ResNet50]
+  - name: train-initial_weights
+    display_name: initial weights
+    type: str
+    hint: "format: dataset-id/model_version"
+    optional: true

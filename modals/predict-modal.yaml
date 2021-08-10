@@ -1,0 +1,13 @@
+name: predict
+title: Predict
+slash_command: /kfp-predict
+validate_args_func: validate_predict_args
+kfp:
+  pipeline_name: predict
+  experiment_name: Evaluation
+blocks:
+  - name: model_version
+    type: str
+  - name: dataset-id
+    display_name: Dataset ID
+    type: int
