@@ -6,7 +6,7 @@ Template for creating modals to trigger kubeflow pipelines. To create a modal yo
 An example of a modal that attaches to a `/kfp-predict` slash command and triggers a kubeflow pipeline called `predict`.
 
 ```yaml
-# models/predict-modal.yaml
+# modals/predict-modal.yaml
 name: predict
 title: Predict
 slash_command: /kfp-predict
