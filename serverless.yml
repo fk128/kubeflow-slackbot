@@ -9,6 +9,7 @@ package:
     - vender
     - node_modules
     - dist
+    - modal.png
 
 provider:
   name: aws

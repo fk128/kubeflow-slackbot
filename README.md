@@ -10,6 +10,7 @@ An example of a modal that attaches to a `/kfp-predict` slash command and trigge
 name: predict
 title: Predict
 slash_command: /kfp-predict
+channel:  mlops # if empty, it would send the message to the user's slackbot
 validate_args_func: validate_predict_args
 kfp:
   pipeline_name: predict
@@ -20,9 +21,15 @@ blocks:
   - name: dataset-id
     display_name: Dataset ID
     type: int
+  - name: output_format
+    choices: [json, yaml]
+  - name: output_name
+    optional: true
 ```
 
-You can optionally write a validation function in `validation.py` for checking the input arguments for errors and refer to the name of the function in `validate_args_func:`.
+You can optionally write a validation function in `validation.py` for checking the input arguments for errors and refer to the name of the function in `validate_args_func:`. Once deployed, this should create a modal that is called with `/kfp-predict` in the `mlops` channel where the bot is deployed.
+
+![](modal.png)
 
 
 Install [serverless](https://www.serverless.com/) and edit `serverless.yaml`. The main things you need to edit are:
