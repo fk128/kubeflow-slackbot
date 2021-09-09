@@ -1,5 +1,5 @@
 import logging
-import os.path
+import os
 from pathlib import Path
 
 import boto3
@@ -10,7 +10,7 @@ from slack_bolt.adapter.aws_lambda import SlackRequestHandler
 import validation
 
 
-def submit_job(experiment_name, pipeline_name, run_name, arg_dict, client, channel, values):
+def submit_job(experiment_name, pipeline_name, run_name, arg_dict, client, channel, values, user=None):
     try:
         create_kubeconfig()
         from integrations import kfp
@@ -19,28 +19,42 @@ def submit_job(experiment_name, pipeline_name, run_name, arg_dict, client, chann
                                    run_name=run_name,
                                    arg_dict=arg_dict,
                                    pipeline_name=pipeline_name)
-        url = f'{base_url}/#/runs/details/{run_id}'
-        msg = f"Your submission was successful " + url
+
+        url = os.path.join(base_url, f'#/runs/details/{run_id}')
+        msg = f"Your submission was successful"
+        submission_info = {'Run id': f'<{url}|{run_id}>',
+                           'Run name': run_name,
+                           'Experiment': experiment_name,
+                           'Pipeline name': pipeline_name}
+        if user is not None:
+            submission_info['Submitter'] = user['name']
         client.chat_postMessage(channel=channel,
                                 text='',
-                                blocks=[{
-                                    "type": "section",
-                                    "text": {
-                                        "type": "mrkdwn",
-                                        "text": msg
-                                    },
-                                    "accessory": {
-                                        "type": "button",
+                                blocks=[
+                                    {
+                                        "type": "section",
                                         "text": {
-                                            "type": "plain_text",
-                                            "text": "View pipeline",
-                                            "emoji": True
+                                            "type": "mrkdwn",
+                                            "text": msg
                                         },
-                                        "value": "click_me_123",
-                                        "url": url,
-                                        "action_id": "button-action"
-                                    }
-                                }, build_text_fields(values)])
+                                        "accessory": {
+                                            "type": "button",
+                                            "text": {
+                                                "type": "plain_text",
+                                                "text": "View pipeline",
+                                                "emoji": True
+                                            },
+                                            "value": "click_me",
+                                            "url": url,
+                                            "action_id": "button-action"
+                                        }
+                                    },
+                                    build_text_fields(submission_info),
+                                    {
+                                        "type": "divider"
+                                    },
+                                    build_text_fields(values)
+                                ])
     except Exception as e:
         # Handle error
         msg = "There was an error with your submission" + str(e)
@@ -176,9 +190,8 @@ def build_modal_view_from_yaml(path):
 
 def build_text_fields(items):
     fields = [{
-        "type": "plain_text",
-        "text": f"{k}: {v['value']}",
-        "emoji": True
+        "type": "mrkdwn",
+        "text": f"*{k}*: {v['value'] if isinstance(v, dict) else v}"
     } for k, v in items.items()]
     return {
         "type": "section",
@@ -263,7 +276,7 @@ def handle_app_mentions(body, say, logger):
     say("What's up?")
 
 
-def build_functions(modal_path, kfp_data, validate_args_func=None):
+def build_functions(modal_path, kfp_data, validate_args_func=None, channel=None):
     def open_modal(ack, body, client):
         # Acknowledge the command request
         ack()
@@ -295,11 +308,13 @@ def build_functions(modal_path, kfp_data, validate_args_func=None):
             ack(response_action="errors", errors=errors)
             return
 
-        user = body["user"]["id"]
+        nonlocal channel
+        if channel is None:
+            channel = body["user"]["id"]
 
         submit_job(experiment_name=experiment_name, pipeline_name=pipeline_name,
                    run_name=None, arg_dict=arg_dict,
-                   client=client, channel=user, values=values)
+                   client=client, channel=channel, values=values, user=body["user"])
 
     return open_modal, handle_submission
 
@@ -309,8 +324,10 @@ for modal_path in Path('modals').glob('*.yaml'):
     data = load_yaml(modal_path)
     if data.get('manual', False):
         continue
+    channel = data.get('channel', None)
     validate_args_func = getattr(validation, data["validate_args_func"]) if 'validate_args_func' in data else None
-    open_modal_func, handle_sub_func = build_functions(modal_path, data['kfp'], validate_args_func=validate_args_func)
+    open_modal_func, handle_sub_func = build_functions(modal_path, data['kfp'], validate_args_func=validate_args_func,
+                                                       channel=channel)
     app.command(data['slash_command'])(open_modal_func)
     app.view(f"{data['name']}_callback")(handle_sub_func)
 
