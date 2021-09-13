@@ -96,7 +96,10 @@ def build_static_select(item):
             "emoji": True
         }
     }
-
+    
+    if 'optional' in item:
+        element['optional'] = item['optional']
+        
     return element
 
 
